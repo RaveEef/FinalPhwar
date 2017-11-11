@@ -1,5 +1,6 @@
-from PyQt4.QtCore import *
-from PyQt4.QtGui import *
+from PyQt4.QtCore import QPoint, QPointF
+from PyQt4.QtGui import QPainterPath, QColor
+
 
 # region Setters & getters PLAYER and OPPONENT
 PLAYER = str()
@@ -215,9 +216,7 @@ def own_initial_pieces(tiles, news):
         tiles[ti].set_piece(PieceItem(name=news[i][0]))
 
 
-    # news: (piece name, tile name)
-
-
+# region Move Functions
 def move_validity(_from, _to, tiles):
     _tiles = list(tiles)
     if not find_free_tiles(_from, find_line_of_sight(_from, _tiles)).__contains__(_to):
@@ -251,8 +250,10 @@ def move_piece(_from, _to, tiles, capture=False):
         #    print tile_from.name, tile_to.name, tile_to.piece.name
 
     return _tiles
+# endregion
 
 
+# region Search Functions
 def find_line_of_sight(tile, tiles):
 
     if tiles is None:
@@ -368,8 +369,10 @@ def find_free_pieces_backwards(piece, lines_of_sight):
         del sight_direction[:]
 
     return tiles_to_move_to
+# endregion
 
 
+# region Print Functions
 def piece_as_sign(piece_name):
     if piece_name == "BN":
         return "%"
@@ -435,5 +438,6 @@ def print_hex(tiles, colored=True):
     board_str += "{:*^65}".format("")
 
     return board_str
+# endregion
 
 

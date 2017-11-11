@@ -1,3 +1,4 @@
+from PyQt4.QtGui import QWidget
 from Move import *
 from Board import *
 from Utilities import *

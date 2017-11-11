@@ -1,6 +1,8 @@
+from PyQt4.QtCore import QObject
 from Utilities import *
 from Board import *
-from TranspositionTable import TT
+from BoardTree import *
+from PhwarMain import TT
 
 DEPTH = 1
 # CURRENT_PLAYER = "B"
@@ -72,16 +74,11 @@ class Move(QObject):
             # file.write("\n" + printer_str + "\n")
             # file.close()
 
+            global TT, TREE
+            print "fom move parent_hash: ", TT.get_zhash(self.tiles)
             tiles = move_piece(initial_tile, moved_to_tile, self.tiles)
 
-            global TT
-            print TT.get_zhash(tiles)
-
-            if not self.visited.push(tiles):
-                print "already visited"
-                print print_hex(tiles)
-                print print_hex(self.visited.peek())
-                return
+            TREE.add_node(tiles, TT.get_zhash(self.tiles))
 
             self.boardstack.push(tiles)
             #self.visited.push(tiles)
@@ -99,7 +96,7 @@ class Move(QObject):
             # print "\n{:^65}\n".format("BOARD DUE TO MOVEMENT {} TO {}".format(initial_tile.name, moved_to_tile.name))
             # print print_hex(tiles)
 
-            size_stack_before_captures = self.boardstack.size()
+            '''size_stack_before_captures = self.boardstack.size()
             tile_captured, capture_value = self.capture_found(moved_to_tile)
             move_value += capture_value
 
@@ -115,7 +112,7 @@ class Move(QObject):
                 self.boardstack.pop()
 
             self.boardstack.pop()
-            move_values.append((initial_tile, moved_to_tile, move_value))
+            move_values.append((initial_tile, moved_to_tile, move_value))'''
 
         return move_values
 

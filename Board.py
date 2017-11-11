@@ -1,10 +1,13 @@
-from Utilities import *
-from Game import *
 # from Move import Move
-from TranspositionTable import TT
+# from BoardTree import *
+from PyQt4.QtCore import Qt, QPoint, QPointF, QRect, QRectF
+from PyQt4.QtGui import QFrame, QPainter, QPainterPath, QPen, QBrush, QFont
+from Utilities import *
 from BoardTree import *
+from TranspositionTable import *
+from Game import *
 from math import sqrt, cos, sin, pi
-import sys
+
 
 class Board(QFrame):
 
@@ -12,8 +15,10 @@ class Board(QFrame):
     PIECES = ['BN', 'BP1', 'BP2', 'BE1', 'BE2', 'BE3', 'BP3', 'BP4', 'BE4',
               'WN', 'WP1', 'WP2', 'WE1', 'WE2', 'WE3', 'WP3', 'WP4', 'WE4']
 
-    #OWN_PIECES = [('BP3', 'E6')]
-    OWN_PIECES = [('BE1', 'D2'), ('BP1', 'E1'), ('BE2', 'F2'), ('BN', 'G1'), ('BE4', 'F3'), ('BP4', 'G2'), ('BP2', 'H2'), ('BE3', 'I2'), ('BP3', 'D4'), ('WE1', 'D10'), ('WP3', 'E9'), ('WP1', 'E10'), ('WE4', 'G9'), ('WE2', 'F10'), ('WN', 'F11'), ('WP2', 'G10'), ('WE3', 'I9'), ('WP4', 'H4')]
+    # OWN_PIECES = [('BP3', 'E6')]
+    OWN_PIECES = [('BE1', 'D2'), ('BP1', 'E1'), ('BE2', 'F2'), ('BN', 'G1'), ('BE4', 'F3'), ('BP4', 'G2'),
+                  ('BP2', 'H2'), ('BE3', 'I2'), ('BP3', 'D4'), ('WE1', 'D10'), ('WP3', 'E9'), ('WP1', 'E10'),
+                  ('WE4', 'G9'), ('WE2', 'F10'), ('WN', 'F11'), ('WP2', 'G10'), ('WE3', 'I9'), ('WP4', 'H4')]
 
     def __init__(self, nr, nc, s, parent):
 
@@ -28,22 +33,16 @@ class Board(QFrame):
 
         self.NR_COORD = (2 * NR) - 1
         self.S = s
-
         self.selected = None
         self.tiles = list()
         self.stack = BoardStack()
-        #self.filename = "results.txt"
 
         self.init_tiles()
         self.init_pieces()
 
-        global TT
-        print TT.get_zhash(list(self.tiles))#p[0], p[1], p[2], p[3], p[4], p[5])
-        # 16741966397884924719
-        print "done"
-        global TREE
+        global TT, TREE
+        print TT.get_zhash(list(self.tiles))
         TREE.root(self.tiles)
-
 
         #own_initial_pieces(self.tiles, Board.OWN_PIECES)
 
@@ -59,11 +58,12 @@ class Board(QFrame):
         self.setMouseTracking(True)
 
     @property
-    def rHex(self):
+    def r_hex(self):
         tile_h = (self.contentsRect().height() - ((NR + 1) * self.S)) / NR
         tile_w = (2 * tile_h) / sqrt(3)
         return tile_w / 2
 
+    # region Initializing the tiles and pieces
     def init_tiles(self):
 
         for j in range(NC):
@@ -83,12 +83,12 @@ class Board(QFrame):
                 # If we are at an odd distance from the column in the middle, the initial offset is increased by half
                 # the spacing plus half hexagon height
                 # endregion
-                real_x = (self.contentsRect().width() / 2) - (d * (self.S + self.rHex)) - ((d * self.rHex) / 2)
-                real_y = self.S + ((sqrt(3) * self.rHex) / 2)
-                real_y += (abs(d)/ 2)*(self.S + (sqrt(3) * self.rHex))
-                real_y += (((i - first_row) / 2) * (self.S + (sqrt(3) * self.rHex)))
+                real_x = (self.contentsRect().width() / 2) - (d * (self.S + self.r_hex)) - ((d * self.r_hex) / 2)
+                real_y = self.S + ((sqrt(3) * self.r_hex) / 2)
+                real_y += (abs(d)/ 2)*(self.S + (sqrt(3) * self.r_hex))
+                real_y += (((i - first_row) / 2) * (self.S + (sqrt(3) * self.r_hex)))
                 if d % 2 != 0:
-                    real_y += (self.S + (sqrt(3) * self.rHex)) / 2
+                    real_y += (self.S + (sqrt(3) * self.r_hex)) / 2
 
                 self.add_tile(name, QPoint(i, j), self.tile_path(real_x, real_y), QPointF(real_x, real_y))
 
@@ -110,41 +110,9 @@ class Board(QFrame):
                           t.coord.x() == (self.NR_COORD - 1 - c[0]) and t.coord.y() == c[1]][0]
             white_index = index + (Board.PIECES.__len__() / 2)
             self.add_piece(Board.PIECES[white_index], white_tile)
+    # endregion
 
-    def tile_path(self, cx, cy):
-        path = QPainterPath()
-        path.moveTo((cx - self.rHex), cy)
-        for i in range(1,6):
-            x = cx + (self.rHex * cos(((3 - i) * pi) / 3))
-            y = cy + (self.rHex * sin(((3 - i) * pi) / 3))
-            path.lineTo(x, y)
-        path.closeSubpath()
-        return path
-
-    def piece_circle_path(self, tile):
-        path = QPainterPath()
-        path.moveTo(tile.pos)
-        path.addEllipse(tile.pos, 0.75*self.rHex, 0.75*self.rHex)
-        path.closeSubpath()
-        return path
-
-    def piece_sign_path(self, tile):
-        if tile.piece.sign == "N":
-            return QPainterPath()
-        else:
-            path = QPainterPath()
-            path.moveTo(tile.pos.x() - self.rHex/2, tile.pos.y())
-            path.lineTo(tile.pos.x() + self.rHex/2, tile.pos.y())
-
-            if tile.piece.sign == "E":
-                return path
-            else:
-                vertical_line = QPainterPath()
-                vertical_line.moveTo(tile.pos.x(), tile.pos.y() - self.rHex/2)
-                vertical_line.lineTo(tile.pos.x(), tile.pos.y() + self.rHex/2)
-                path += vertical_line
-                return path
-
+    # region Adding tiles to the board and pieces to the tiles
     def add_tile(self, name, coord, path, pos):
         t = TileItem()
         t.set_name(name)
@@ -160,29 +128,42 @@ class Board(QFrame):
         p = PieceItem(name=piece)
         p.set_tile(tile)
         tile.set_piece(p)
+    # endregion
 
-    def move_piece(self, _from, _to):
-        self.tiles = move_piece(_from, _to, self.tiles)
-        self.update()
+    # region Paint Functions
+    def tile_path(self, cx, cy):
+        path = QPainterPath()
+        path.moveTo((cx - self.r_hex), cy)
+        for i in range(1,6):
+            x = cx + (self.r_hex * cos(((3 - i) * pi) / 3))
+            y = cy + (self.r_hex * sin(((3 - i) * pi) / 3))
+            path.lineTo(x, y)
+        path.closeSubpath()
+        return path
 
-    def tile_at(self, mouse_pos):
-        for i, tile in enumerate(self.tiles):
-            if tile.path.contains(mouse_pos):
-                return tile
-        return -1
+    def piece_circle_path(self, tile):
+        path = QPainterPath()
+        path.moveTo(tile.pos)
+        path.addEllipse(tile.pos, 0.75 * self.r_hex, 0.75 * self.r_hex)
+        path.closeSubpath()
+        return path
 
-    def button_at(self, mouse_pos):
-        white_button = QPainterPath()
-        white_button.addEllipse(QPointF(self.contentsRect().width() - 50, self.contentsRect().height() - 50), 35, 35)
-        if white_button.contains(mouse_pos):
-            return True, "W"
+    def piece_sign_path(self, tile):
+        if tile.piece.sign == "N":
+            return QPainterPath()
+        else:
+            path = QPainterPath()
+            path.moveTo(tile.pos.x() - self.r_hex / 2, tile.pos.y())
+            path.lineTo(tile.pos.x() + self.r_hex / 2, tile.pos.y())
 
-        black_button = QPainterPath()
-        black_button.addEllipse(QPointF(self.contentsRect().width() - 50, 50), 35, 35)
-        if black_button.contains(mouse_pos):
-            return True, "B"
-
-        return False, ""
+            if tile.piece.sign == "E":
+                return path
+            else:
+                vertical_line = QPainterPath()
+                vertical_line.moveTo(tile.pos.x(), tile.pos.y() - self.r_hex / 2)
+                vertical_line.lineTo(tile.pos.x(), tile.pos.y() + self.r_hex / 2)
+                path += vertical_line
+                return path
 
     def paint_tiles(self, painter):
         painter.setPen(QPen(Qt.black, 1))
@@ -199,22 +180,22 @@ class Board(QFrame):
         for tile in [t for t in self.tiles if t.piece is not None]:
             if tile.piece.player == 'B':
                 painter.setBrush(QBrush(Qt.black))
-                painter.setPen(QPen(Qt.black, 0.1*self.rHex))
+                painter.setPen(QPen(Qt.black, 0.1 * self.r_hex))
                 painter.drawPath(self.piece_circle_path(tile))
 
                 painter.setBrush(QBrush(Qt.white))
-                pen = QPen(Qt.white, 0.12*sqrt(3)*self.rHex)
+                pen = QPen(Qt.white, 0.12 * sqrt(3) * self.r_hex)
                 pen.setCapStyle(Qt.RoundCap)
                 painter.setPen(pen)
                 painter.drawPath(self.piece_sign_path(tile))
 
             elif tile.piece.player == 'W':
                 painter.setBrush(QBrush(Qt.white))
-                painter.setPen(QPen(Qt.black, 0.1*self.rHex))
+                painter.setPen(QPen(Qt.black, 0.1 * self.r_hex))
                 painter.drawPath(self.piece_circle_path(tile))
 
                 painter.setBrush(QBrush(Qt.black))
-                pen = QPen(Qt.black, 0.12*sqrt(3)*self.rHex)
+                pen = QPen(Qt.black, 0.12 * sqrt(3) * self.r_hex)
                 pen.setCapStyle(Qt.RoundCap)
                 painter.setPen(pen)
                 painter.drawPath(self.piece_sign_path(tile))
@@ -228,7 +209,7 @@ class Board(QFrame):
 
         for tile in self.tiles:
             c = tile.pos
-            r = QRectF(c.x() - self.rHex, c.y() - self.rHex, self.rHex*2, sqrt(3) * self.rHex)
+            r = QRectF(c.x() - self.r_hex, c.y() - self.r_hex, self.r_hex * 2, sqrt(3) * self.r_hex)
             coord_text = " {}\n({},{})".format(tile.name, tile.coord.x(), tile.coord.y())
             painter.drawText(r, Qt.AlignCenter, coord_text)
 
@@ -264,6 +245,31 @@ class Board(QFrame):
         if get_player() == "W":
             painter.setPen(QPen(Qt.white, 8))
         painter.drawText(QRectF(10, 10, 60, 60), Qt.AlignCenter, get_player())
+    # endregion
+
+    def move_piece(self, _from, _to):
+        self.tiles = move_piece(_from, _to, self.tiles)
+        self.update()
+
+    # region Mouseclick Functions
+    def tile_at(self, mouse_pos):
+        for i, tile in enumerate(self.tiles):
+            if tile.path.contains(mouse_pos):
+                return tile
+        return -1
+
+    def button_at(self, mouse_pos):
+        white_button = QPainterPath()
+        white_button.addEllipse(QPointF(self.contentsRect().width() - 50, self.contentsRect().height() - 50), 35, 35)
+        if white_button.contains(mouse_pos):
+            return True, "W"
+
+        black_button = QPainterPath()
+        black_button.addEllipse(QPointF(self.contentsRect().width() - 50, 50), 35, 35)
+        if black_button.contains(mouse_pos):
+            return True, "B"
+
+        return False, ""
 
     def mousePressEvent(self, event):
 
@@ -297,16 +303,23 @@ class Board(QFrame):
 
         if self.selected is not None:
             if tile_clicked.piece is None:
-                print "Move to ", tile_clicked.name
-                new_tiles = move_piece(self.selected, tile_clicked, self.tiles, False)
-                print TT.get_zhash(new_tiles)
-                print TREE.find_node(self.tiles)
-                TREE.add_node(new_tiles, TREE.find_node(self.tiles))
-                TREE.write_tree("tree.txt")
 
-                self.tiles = new_tiles
+
+
+
+                parent_hash = TT.get_zhash(self.tiles)
+                print "From board with hash ", parent_hash
+
                 set_player(get_opponent())
                 self.update()
+
+                print "Move to ", tile_clicked.name
+                self.tiles = move_piece(self.selected, tile_clicked, self.tiles, False)
+                print "new hash:", TT.get_zhash(list(self.tiles))
+                TREE.add_node(self.tiles, parent_hash)
+
+                TREE.write_tree("textfiles/tree.txt")
+
                 self.stack.push(self.tiles)
                 # self.stack.print_stack()
                 self.selected = None
@@ -332,57 +345,8 @@ class Board(QFrame):
 
 
         self.update()
+    # endregion
 
     def expand_root(self, initial_tile=None):
 
         move = Move(self.stack, initial_tile)
-
-
-
-
-
-    '''def make_connection(self, board):
-        board.tile_clicked.connect(self.get_tile_clicked)
-
-    @pyqtSlot(TileItem)
-    def get_tile_clicked(self, tile):
-        if tile.piece is not None:
-            if self.from_tile is None:
-                print "from tile: ", tile.name
-                self.from_tile = tile
-                for x in self.get_line_of_sight(tile):
-                    for i in x[1]:
-                        print Board.TILES[i].name
-                #for in_sight in self.get_line_of_sight(self.from_tile):
-                    #print in_sight[1].name
-            elif self.to_tile is None:
-                print "to tile: ", tile.name
-                self.to_tile = tile
-
-    def line_of_sight(self, index):
-        selected = Board.TILES[index]
-        sight = list()
-        v = list()
-        d1 = list()
-        d2 = list()
-
-        for i, t in enumerate(Board.TILES):
-            if t.coord.x() != selected.coord.x() and t.coord.y() == selected.coord.y():
-                v.append(i)
-
-            if t != selected:
-                x_diff = selected.coord.x() - t.coord.x()
-                y_diff = selected.coord.y() - t.coord.y()
-                if x_diff == y_diff:
-                    d1.append(i)
-                elif x_diff == -y_diff:
-                    d2.append(i)
-
-        sight.append((Qt.blue, v))
-        sight.append((Qt.green, d1))
-        sight.append((Qt.yellow, d2))
-
-        for color, direction in sight:
-            for d in direction:
-                Board.TILES[d].set_color(color)
-        self.update()'''

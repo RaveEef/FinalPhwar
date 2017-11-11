@@ -1,10 +1,10 @@
 import sys
+from PyQt4.QtGui import QMainWindow, QApplication, QDesktopWidget
 from Board import *
 from Game import *
 from Utilities import *
 from TranspositionTable import *
 
-TT = TranspositionTable()
 
 
 class Phwar(QMainWindow):
